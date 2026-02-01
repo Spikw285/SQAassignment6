@@ -1,0 +1,7 @@
+selenium
+pandas
+openpyxl
+pytest
+pytest-dotenv
+pytest-html
+webdriver-manager
