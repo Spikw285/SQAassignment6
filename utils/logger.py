@@ -17,7 +17,7 @@ def get_logger(name: str = "ddt_logger"):
     ch.setFormatter(fmt)
     logger.addHandler(ch)
 
-    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.now().strftime("%Y%m%dT%H%M%SZ")
     fh = logging.FileHandler(os.path.join(LOG_DIR, f"{name}_{ts}.log"), encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)

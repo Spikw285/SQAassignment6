@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from utils.actions import (
     wait_visible,
+    wait_invisible,
     wait_until_modal_shown,
     click_with_fallback,
     save_screenshot,
@@ -59,42 +60,67 @@ def run(driver, data, logger):
             result.update({"actual":"ERROR","status":"ERROR","error":"submit_click_failed"})
             return result
 
-        # --- improved outcome detection using detect_popups ---
-        pop = detect_popups(driver, timeout=6.0, logger=logger, modal_ids=["logInModal"])
-        ptype = pop.get("type")
-        ptext = (pop.get("text") or "").strip()
+        # КРИТИЧНО: Проверяем результат (alert/success) СРАЗУ после submit
+        # НЕ ждём закрытия модалки, т.к. alert может заблокировать её!
+        logger.debug(f"[{test_id}] Checking for result popup (alert or success)...")
 
-        logger.debug(f"[{test_id}] detect_popups returned: type={ptype}, text={ptext[:200]}")
+        # Даём небольшую паузу для появления alert'а или закрытия модалки
+        import time
+        time.sleep(1.5)
 
-        # Decide actual result based on popup detection and logout element
+        # Сначала проверяем ТОЛЬКО alert (приоритет!)
+        alert_text = None
+        try:
+            alert = driver.switch_to.alert
+            alert_text = alert.text
+            logger.info(f"[{test_id}] Native alert found: {alert_text}")
+            alert.accept()
+            logger.debug(f"[{test_id}] Alert accepted")
+        except:
+            pass  # No alert
+
+        # Decide actual result based on alert or logout presence
         actual = None
         details = None
 
-        if ptype == "native_alert":
-            # native alert most likely indicates failure (error message)
+        if alert_text:
+            # Native alert detected - это всегда ошибка на demoblaze
             actual = "FAIL"
-            details = f"native_alert: {ptext}"
-            logger.info(f"[{test_id}] native alert detected -> FAIL: {ptext[:200]}")
-        elif ptype in ("sweet_alert", "modal", "inline"):
-            # DOM popup present: typically indicates failure (login error or info)
-            # If you have an app-specific rule where certain modal text means PASS, handle it here.
-            actual = "FAIL"
-            details = f"{ptype}: {ptext}"
-            logger.info(f"[{test_id}] DOM popup ({ptype}) detected -> FAIL: {ptext[:200]}")
+            details = f"native_alert: {alert_text}"
+            logger.info(f"[{test_id}] native alert detected -> FAIL: {alert_text}")
+
+            # Закрываем модалку вручную после ошибки
+            try:
+                close_btn = driver.find_element(By.XPATH, "//div[@id='logInModal']//button[text()='Close']")
+                close_btn.click()
+                logger.debug(f"[{test_id}] Closed login modal after alert")
+            except:
+                pass
         else:
-            # no popup detected — check logout presence as success indicator
+            # No alert — check logout presence as success indicator
             try:
                 logout_nodes = driver.find_elements(By.ID, "logout2")
-                if logout_nodes:
+                if logout_nodes and logout_nodes[0].is_displayed():
                     actual = "PASS"
                     details = "logout2 present"
                     logger.info(f"[{test_id}] logout2 found -> PASS")
                 else:
-                    # neither popup nor logout — ambiguous: treat as FAIL and capture debug info
-                    actual = "FAIL"
-                    details = "no popup and no logout found"
-                    logger.warning(f"[{test_id}] No popup and no logout -> FAIL (ambiguous)")
-                    # capture screenshot and snippet to help debugging
+                    # No logout - check if modal still open (might indicate error)
+                    try:
+                        modal = driver.find_element(By.ID, "logInModal")
+                        if modal.is_displayed():
+                            actual = "FAIL"
+                            details = "login modal still open (no alert, no logout)"
+                            logger.warning(f"[{test_id}] Modal still open -> FAIL")
+                        else:
+                            actual = "FAIL"
+                            details = "no logout found after modal closed"
+                            logger.warning(f"[{test_id}] No logout found -> FAIL")
+                    except:
+                        actual = "FAIL"
+                        details = "no popup and no logout found"
+                        logger.warning(f"[{test_id}] No indicators found -> FAIL (ambiguous)")
+
                     save_screenshot(driver, f"{test_id}_no_indicator", logger)
             except Exception as e:
                 actual = "FAIL"

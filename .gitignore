@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.venv/
+venv/
+
+# Test / logs
+.logs/
+logs/
+.junit/
+.reports/
+
+# Editor
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Excel sheets
+*.xlsx
+*.xlsm
+*.xlsb
+*.xltx
+*.xltm
+*.xls
+*.xlam
+

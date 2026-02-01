@@ -44,13 +44,14 @@ def detect_popups(driver,
                 text = alert.text
             except Exception:
                 text = ""
-            # do not accept here — caller decides; but accept to clear state
+            # IMPORTANT: Accept alert to clear it and prevent blocking further checks
             try:
                 alert.accept()
-            except Exception:
-                pass
-            if logger:
-                logger.debug(f"detect_popups: native alert detected: {text}")
+                if logger:
+                    logger.debug(f"detect_popups: native alert detected and accepted: {text}")
+            except Exception as e:
+                if logger:
+                    logger.warning(f"detect_popups: failed to accept alert: {e}")
             return {"type": "native_alert", "text": text or "", "element": None, "selector": None}
         except NoAlertPresentException:
             pass

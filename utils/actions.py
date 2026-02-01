@@ -39,6 +39,10 @@ def wait_clickable(driver: WebDriver, by, value, timeout: int = 10):
 def wait_alert(driver: WebDriver, timeout: int = 5):
     return WebDriverWait(driver, timeout).until(EC.alert_is_present())
 
+def wait_invisible(driver: WebDriver, by, value, timeout: int = 10):
+    """Wait until element becomes invisible or is removed from DOM"""
+    return WebDriverWait(driver, timeout).until(EC.invisibility_of_element_located((by, value)))
+
 def wait_until_modal_shown(driver: WebDriver, by_value_tuple: tuple, timeout: int = 8):
     by, val = by_value_tuple
     modal = WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((by, val)))

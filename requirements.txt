@@ -4,4 +4,6 @@ openpyxl
 pytest
 pytest-dotenv
 pytest-html
+pytest-metadata
+py
 webdriver-manager
